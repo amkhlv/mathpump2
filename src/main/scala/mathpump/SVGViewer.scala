@@ -22,7 +22,8 @@ import scalafx.stage.Stage
   * Created by andrei on 03/02/16.
   */
 class SVGViewer extends JFXApp {
-  val browser: Map[String, WebView] = ( for (nm <- them.keys) yield (nm -> new WebView()) ) toMap
+  val browser: Map[String, WebView] =
+    ( for (nm <- them.keys) yield (nm -> new WebView()) ) toMap
   val webEngine: Map[String, WebEngine] = ( for (nm <- them.keys) yield (nm -> browser(nm).engine)) toMap ;
   val fxec = JavaFXExecutionContext.javaFxExecutionContext
 
@@ -52,9 +53,9 @@ class SVGViewer extends JFXApp {
       message match {
         case p: ParcelTextFile => {
           logger.info("Got text file: " + p.filename + " from " + p.from)
-          val path = Paths.get(them(p.from)("dir"), p.filename)
+          val path = Paths.get(them(p.from).dir, p.filename)
           Misc.writeToFilePath(path, p.cont)
-          toUpdate = Left((p.from, "file://" + Paths.get(them(p.from)("dir"), p.filename).toAbsolutePath().toString))
+          toUpdate = Left((p.from, "file://" + Paths.get(them(p.from).dir, p.filename).toAbsolutePath().toString))
           logger.info("Sending acknowledgment to " + p.from)
           delivery.broadcast(List(p.from), new ParcelReceipt("OK", myName, p.filename))
           beeper ! BeepOnPatch
@@ -63,7 +64,7 @@ class SVGViewer extends JFXApp {
           logger.info("Got patch: " + p.patch)
           val dmp = new diff_match_patch
           val patch = new util.LinkedList(dmp.patch_fromText(p.patch))
-          val lines = Misc.readFromFilePath(Paths.get(them(p.from)("dir"), p.filename))
+          val lines = Misc.readFromFilePath(Paths.get(them(p.from).dir, p.filename))
           val resultOfApplyingPatch = dmp.patch_apply(patch, lines).toList
           val newLines = resultOfApplyingPatch.head match {
             case x: String => x
@@ -76,9 +77,9 @@ class SVGViewer extends JFXApp {
             logger.error("************ PATCH ERROR => Requesting to resend the whole file ************")
             delivery.broadcast(List(p.from), new ParcelReceipt("PleaseResend", myName, p.filename))
           } else {
-            Misc.writeToFilePath(Paths.get(them(p.from)("dir"), p.filename), newLines)
-            logger.info("to load: " + "file://" + Paths.get(them(p.from)("dir"), p.filename).toAbsolutePath().toString)
-            toUpdate = Left((p.from, "file://" + Paths.get(them(p.from)("dir"), p.filename).toAbsolutePath().toString))
+            Misc.writeToFilePath(Paths.get(them(p.from).dir, p.filename), newLines)
+            logger.info("to load: " + "file://" + Paths.get(them(p.from).dir, p.filename).toAbsolutePath().toString)
+            toUpdate = Left((p.from, "file://" + Paths.get(them(p.from).dir, p.filename).toAbsolutePath().toString))
             logger.info("BeepOnPatch :)")
             beeper ! BeepOnPatch
             logger.info("Sending acknowledgment to " + p.from)
@@ -144,17 +145,20 @@ class SVGViewer extends JFXApp {
   }
 
   val svgStage : Map[String, Stage] = (
-    for (nm <- them.keys) yield
+    for (nm <- them.keys) yield {
+      browser(nm).setPrefHeight(them(nm).height - 20)
+      browser(nm).setPrefWidth(them(nm).width - 20)
       (nm -> new Stage {
         title = nm + " pumped in:"
-        width = 800
-        height = 600
+        width = them(nm).width
+        height = them(nm).height
         scene = new Scene {
           content = List(
             browser(nm)
           )
         }
       })
+    }
     ) toMap    ;
 
   for (nm <- them.keys) svgStage(nm).show()

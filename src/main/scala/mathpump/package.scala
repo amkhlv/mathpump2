@@ -11,14 +11,17 @@ package object mathpump {
   val myName = config.getString("me.name")
   val myPassword = config.getString("me.password")
   val outDirName = config.getString("me.dir")
-  val them: Map[String, Map[String, String]] = Map((for (c <- config.getConfigList("them").toArray()) yield {
-    val nm: String = c match {
-      case conf: Config => conf.getString("name")
+  case class PersonConfig(dir: String, width: Int, height: Int)
+  val them: Map[String, PersonConfig] = Map((for (c <- config.getConfigList("them").toArray()) yield {
+    val (nm: String , dir: String, width: Int, height: Int) = c match {
+      case conf: Config => (
+        conf.getString("name"),
+        conf.getString("dir"),
+        conf.getInt("width"),
+        conf.getInt("height")
+        )
     }
-    val dir: String = c match {
-      case conf: Config => conf.getString("dir")
-    }
-    (nm -> Map("dir" -> dir))
+    (nm -> PersonConfig(dir = dir, width = width, height = height))
   }):_*)
   val rabbitURL = config.getString("rabbitURL")
   val rabbitPort = config.getInt("rabbitPort")
