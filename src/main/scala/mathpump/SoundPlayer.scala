@@ -1,7 +1,7 @@
 package mathpump
 
-import java.io.File
-import java.nio.file.Paths
+import java.net.URL
+
 import akka.actor.Actor
 import org.apache.log4j.{Logger, PropertyConfigurator}
 /**
@@ -11,11 +11,11 @@ class SoundPlayer extends Actor  {
   val logger = Logger.getLogger("SOUND")
   PropertyConfigurator.configure("log4j.properties");
 
-  val audioFile: Map[Sound, File] = Map(
-    BeepOnError -> Paths.get("hooks", "ton.wav").toFile,
-    BeepOnPatch -> Paths.get("hooks", "drum-1.5.wav").toFile,
-    BeepOnReceipt -> Paths.get("hooks", "drum-1.wav").toFile,
-    BeepOnAnomaly -> Paths.get("hooks", "90125__pierrecartoons1979__click-tiny.wav").toFile
+  val audioFile: Map[Sound, URL] = Map(
+    BeepOnError -> getClass.getResource("/sounds/pluck2.wav"),
+    BeepOnPatch -> getClass.getResource("/sounds/drum-1.5.wav"),
+    BeepOnReceipt -> getClass.getResource("/sounds/drum-1.wav"),
+    BeepOnAnomaly -> getClass.getResource("/sounds/pluck.wav")
   )
   def receive = {
     case x:Sound => {

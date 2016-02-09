@@ -6,6 +6,7 @@ package mathpump;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
@@ -17,11 +18,11 @@ import javax.sound.sampled.SourceDataLine;
 public class SoundClip {
                         private static final int	EXTERNAL_BUFFER_SIZE = 128000;
 
-    public void play(File soundFile) {
+    public void play(URL url) {
         AudioInputStream	audioInputStream = null;
 		try
 		{
-			audioInputStream = AudioSystem.getAudioInputStream(soundFile);
+			audioInputStream = AudioSystem.getAudioInputStream(url);
 		}
 		catch (Exception e)
 		{

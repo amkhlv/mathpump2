@@ -1,21 +1,22 @@
 package mathpump
 
-import akka.actor.{PoisonPill, ActorSystem, Props}
-import com.typesafe.config.ConfigFactory
-import org.apache.log4j.{PropertyConfigurator, Logger}
-import java.nio.file.{Paths, Files, StandardCopyOption}
+import java.nio.file.Paths
 import java.util
+
+import akka.actor.{ActorSystem, PoisonPill, Props}
+import com.typesafe.config.ConfigFactory
+import org.apache.log4j.{Logger, PropertyConfigurator}
+
 import scala.concurrent.{ExecutionContext, Future}
-import scalafx.application.{JFXApp,Platform}
+import scala.language.postfixOps
+import scalafx.Includes._
+import scalafx.application.JFXApp
 import scalafx.application.JFXApp.PrimaryStage
+import scalafx.event.ActionEvent
 import scalafx.scene.Scene
 import scalafx.scene.control.Button
 import scalafx.scene.web.{WebEngine, WebView}
 import scalafx.stage.Stage
-import scalafx.event.ActionEvent
-import scalafx.Includes._
-import scala.language.postfixOps
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * Created by andrei on 03/02/16.
@@ -38,8 +39,8 @@ class SVGViewer extends JFXApp {
     val customConf = ConfigFactory.parseString("akka { log-dead-letters-during-shutdown = off } ")
     val system = ActorSystem("MathPump", customConf)
     val beeper =  system.actorOf(Props[SoundPlayer], name="beeper")
-    val sndr = system.actorOf(Props[Transmitter], name = "transmitter")
-    val wtcr = system.actorOf(Props[Watcher], name = "watcher")
+    val sndr = system.actorOf(Props(new Transmitter(beeper)), name = "transmitter")
+    val wtcr = system.actorOf(Props(new Watcher(sndr)), name = "watcher")
 
     val delivery = PostOffice
 
@@ -56,7 +57,7 @@ class SVGViewer extends JFXApp {
           toUpdate = Left((p.from, "file://" + Paths.get(them(p.from)("dir"), p.filename).toAbsolutePath().toString))
           logger.info("Sending acknowledgment to " + p.from)
           delivery.broadcast(List(p.from), new ParcelReceipt("OK", myName, p.filename))
-          //beeper ! BeepOnPatch
+          beeper ! BeepOnPatch
         }
         case p: ParcelPatch => {
           logger.info("Got patch: " + p.patch)
@@ -79,7 +80,7 @@ class SVGViewer extends JFXApp {
             logger.info("to load: " + "file://" + Paths.get(them(p.from)("dir"), p.filename).toAbsolutePath().toString)
             toUpdate = Left((p.from, "file://" + Paths.get(them(p.from)("dir"), p.filename).toAbsolutePath().toString))
             logger.info("BeepOnPatch :)")
-            //beeper ! BeepOnPatch
+            beeper ! BeepOnPatch
             logger.info("Sending acknowledgment to " + p.from)
             delivery.broadcast(List(p.from), new ParcelReceipt("OK", myName, p.filename))
           }
@@ -87,14 +88,14 @@ class SVGViewer extends JFXApp {
         }
         case p: ParcelReceipt => {
           logger.info("BeepOnReceipt :)")
-          //beeper ! BeepOnReceipt
+          beeper ! BeepOnReceipt
           logger.info("Received receipt from " + p.from + " with status " + p.status + " of file " + p.filename)
           sndr ! p  //notify the sender of the receipt of acknowledgment
         }
         case Stop => {
           logger.info("I got the Stop signal from RabbitMQ; exiting")
           if (! delivery.close()) {
-            //beeper ! BeepOnError
+            beeper ! BeepOnError
           }
           beeper ! PoisonPill
           sndr ! PoisonPill
@@ -102,10 +103,10 @@ class SVGViewer extends JFXApp {
         }
         case Ignore => println("PASS")
         case e: ChannelWasClosed => {
-          //beeper ! BeepOnError
+          beeper ! BeepOnError
           logger.error("lost incoming channel; exiting")
           if (! delivery.close()) {
-            // beeper ! BeepOnError
+            beeper ! BeepOnError
           }
           beeper ! PoisonPill
           sndr ! PoisonPill
@@ -126,8 +127,11 @@ class SVGViewer extends JFXApp {
     //let us now start it:
     mainThread()
   }
-  val btn : Button = new Button("press to start mathpump") {
-    onAction = (e: ActionEvent) => startMain
+  val btn : Button = new Button("press to START mathpump") {
+    onAction = (e: ActionEvent) => {
+      btn.text = "press to STOP mathpump"
+      startMain
+    }
   }
 
   stage = new PrimaryStage {

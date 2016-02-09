@@ -3,7 +3,7 @@ package mathpump
 import java.io.File
 import java.nio.file._
 
-import akka.actor.Actor
+import akka.actor.{ActorRef, Actor}
 import org.apache.log4j.{Logger, PropertyConfigurator}
 
 import scala.collection.JavaConversions._
@@ -11,7 +11,7 @@ import scala.language.postfixOps
 /**
   * Created by andrei on 06/02/16.
   */
-class Watcher extends Actor {
+class Watcher(sndr: ActorRef) extends Actor {
   val logger = Logger.getLogger("WATCHER")
   PropertyConfigurator.configure("log4j.properties");
   val fsys = Paths.get(".").getFileSystem()
@@ -43,7 +43,7 @@ class Watcher extends Actor {
             (evKind == StandardWatchEventKinds.ENTRY_MODIFY)
         ) {
           logger.info("Sending message to SNDR about " + evKind.toString + " of: " + evCont.toString)
-          context.parent ! NotificationOfFilesystemEvent(
+          sndr ! NotificationOfFilesystemEvent(
             evKind,
             evCont match {
               case p: Path => p
@@ -60,7 +60,7 @@ class Watcher extends Actor {
             //this is just to double check
             signalFile.delete()
             logger.info("Detected signal file; sending WatcherRequestsShutdown to Commander")
-            context.parent ! WatcherRequestsShutdown
+            sndr ! WatcherRequestsShutdown
             happy = false
           }
         }

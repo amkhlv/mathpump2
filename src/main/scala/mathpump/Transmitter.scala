@@ -5,13 +5,13 @@ package mathpump
   */
 
 
-import akka.actor.Actor
+import akka.actor.{ActorRef, Actor}
 import org.apache.log4j.{Logger, PropertyConfigurator}
 import java.nio.file._
 import scala.annotation.tailrec
 import scala.language.postfixOps
 
-class Transmitter extends Actor {
+class Transmitter(beeper: ActorRef) extends Actor {
   val logger = Logger.getLogger("SENDER")
   PropertyConfigurator.configure("log4j.properties");
 
@@ -101,6 +101,7 @@ class Transmitter extends Actor {
               Thread.sleep(100)
               file_did_change(j-1, Misc.readFromFilePath(fullpath))
             } else {
+              beeper ! BeepOnAnomaly
               false
             }
           } else true

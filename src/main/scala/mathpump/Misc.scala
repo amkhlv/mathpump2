@@ -6,7 +6,7 @@ package mathpump
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files._
-import java.nio.file.{Files, Path}
+import java.nio.file.{Files, Path, Paths}
 import scala.collection.JavaConversions._
 
 object Misc {
@@ -31,5 +31,7 @@ object Misc {
 
   def readFromFilePath(filePath: Path): String =
     readAllLines(filePath, StandardCharsets.UTF_8).mkString(separator)
+
+  def resourceFile(x: String): java.io.File = Paths.get(getClass.getResource(x).getPath).toFile
 
 }
