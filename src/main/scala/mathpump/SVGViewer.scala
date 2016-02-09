@@ -5,7 +5,7 @@ import com.typesafe.config.ConfigFactory
 import org.apache.log4j.{PropertyConfigurator, Logger}
 import java.nio.file.{Paths, Files, StandardCopyOption}
 import java.util
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scalafx.application.{JFXApp,Platform}
 import scalafx.application.JFXApp.PrimaryStage
 import scalafx.scene.Scene
@@ -113,16 +113,16 @@ class SVGViewer extends JFXApp {
         }
       }
       toUpdate
-    }.map(result => result match {
+    }(ExecutionContext.global).onSuccess {
       case Left((who, url)) => {
         webEngine(who).load(url);
         mainThread()
       }
-      case Right(Stop) => {}
+      case Right(Stop) => {()}
       case Right(Continue) => {
         mainThread()
       }
-    })(fxec)
+    }(fxec)
     //let us now start it:
     mainThread()
   }
