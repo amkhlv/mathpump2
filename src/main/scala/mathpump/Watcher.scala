@@ -1,9 +1,8 @@
 package mathpump
 
-import java.io.File
 import java.nio.file._
 
-import akka.actor.{ActorRef, Actor}
+import akka.actor.ActorRef
 import org.apache.log4j.{Logger, PropertyConfigurator}
 
 import scala.collection.JavaConversions._
@@ -11,18 +10,13 @@ import scala.language.postfixOps
 /**
   * Created by andrei on 06/02/16.
   */
-class Watcher(sndr: ActorRef) extends Actor {
+class Watcher(sndr: ActorRef) {
   val logger = Logger.getLogger("WATCHER")
   PropertyConfigurator.configure("log4j.properties");
+  var happy = true;
   val fsys = Paths.get(".").getFileSystem()
-
-  override def preStart() {
-    logger.info("=== entering mainloop ===")
-    self ! Continue
-  }
-
-  def receive = {
-    case Continue => {
+  def run = {
+    while (happy) {
       //Thread.sleep(1000);
       logger.info("continuing")
       val watcher = fsys.newWatchService()
@@ -36,42 +30,34 @@ class Watcher(sndr: ActorRef) extends Actor {
         //In the case of ENTRY_CREATE, ENTRY_DELETE, and ENTRY_MODIFY events
         //the context is a Path that is the relative path between the directory registered with the watch service,
         //and the entry that is created, deleted, or modified.
-        val evKind = event.kind()
-        logger.info("Detected event in context: " + evCont + " of the kind: " + evKind)
-        if (
-          (evKind == StandardWatchEventKinds.ENTRY_CREATE) ||
-            (evKind == StandardWatchEventKinds.ENTRY_MODIFY)
-        ) {
-          logger.info("Sending message to SNDR about " + evKind.toString + " of: " + evCont.toString)
-          sndr ! NotificationOfFilesystemEvent(
-            evKind,
-            evCont match {
-              case p: Path => p
-              case _ => throw new RuntimeException("event context not a path!")
-            }
-          )
-        }
-
-        else if (event.context().toString() == "stopwatcher") {
+        if (event.context().toString() == stopWatcherFileName) {
           // This is a hook to stop this Watcher
-          // To stop the watcher, we have to create the file called stopwatcher
-          val signalFile = new File(outDirName + "/stopwatcher")
+          // To stop the watcher, we create a file with a special name
+          val signalFile =  Paths.get(outDirName, stopWatcherFileName).toFile
           if (signalFile.exists()) {
             //this is just to double check
             signalFile.delete()
-            logger.info("Detected signal file; sending WatcherRequestsShutdown to Commander")
-            sndr ! WatcherRequestsShutdown
             happy = false
+            logger.info("Detected (and detected) the signal file; sending WatcherRequestsShutdown to Commander")
+            sndr ! WatcherRequestsShutdown
+          }
+        } else {
+          val evKind = event.kind()
+          logger.info("Detected event in context: " + evCont + " of the kind: " + evKind)
+          if ((evKind == StandardWatchEventKinds.ENTRY_CREATE) || (evKind == StandardWatchEventKinds.ENTRY_MODIFY)) {
+            logger.info("Sending message to SNDR about " + evKind.toString + " of: " + evCont.toString)
+            sndr ! NotificationOfFilesystemEvent(
+              evKind,
+              evCont match {
+                case p: Path => p
+                case _ => throw new RuntimeException("event context not a path!")
+              }
+            )
           }
         }
       }
       watcher.close()
-      if (happy) self ! Continue
     }
+    WatcherRequestsShutdown
   }
-
-  override def postStop() {
-    logger.info("I am gone!")
-  }
-
 }

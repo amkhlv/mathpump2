@@ -10,7 +10,7 @@ import org.apache.log4j.{Logger, PropertyConfigurator}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 import scalafx.Includes._
-import scalafx.application.JFXApp
+import scalafx.application.{Platform, JFXApp}
 import scalafx.application.JFXApp.PrimaryStage
 import scalafx.event.ActionEvent
 import scalafx.scene.Scene
@@ -22,40 +22,65 @@ import scalafx.stage.Stage
   * Created by andrei on 03/02/16.
   */
 class SVGViewer extends JFXApp {
+  Platform.implicitExit = true;
   val browser: Map[String, WebView] =
     ( for (nm <- them.keys) yield (nm -> new WebView()) ) toMap
   val webEngine: Map[String, WebEngine] = ( for (nm <- them.keys) yield (nm -> browser(nm).engine)) toMap ;
   val fxec = JavaFXExecutionContext.javaFxExecutionContext
+  val customConf = ConfigFactory.parseString("akka { log-dead-letters-during-shutdown = off } ")
+  val system = ActorSystem("MathPump", customConf)
+  val beeper =  system.actorOf(Props[SoundPlayer], name="beeper")
+  println("Initializing transmitter...")
+  val sndr = system.actorOf(Props(new Transmitter(beeper)), name = "transmitter")
+  val delivery = PostOffice
 
   def startMain = {
-    val backgroundThread = new Thread {
+    val backgroundThreadForListeningToRabbit = new Thread {
       setDaemon(true)
-      override def run = runMain
+      override def run = waitForMessages
     }
-    backgroundThread.run
+    val backgroundThreadForWatchingFiles = new Thread {
+      setDaemon(true)
+      override def run = watcherProc
+    }
+    backgroundThreadForWatchingFiles.run
+    backgroundThreadForListeningToRabbit.run
   }
-  def runMain = {
+  def stopMain = Paths.get(outDirName, stopWatcherFileName).toFile().createNewFile()
+  def watcherProc = {
+    def mainThread(): Unit = Future{(new Watcher(sndr)).run}(ExecutionContext.global).onSuccess {
+      case WatcherRequestsShutdown => { //exiting:
+        //close all SVG windows:
+        for (nm <- them.keys) svgStage(nm).close()  ;
+        //I want to sleep 3 seconds before closing the main window
+        //to give time to the other thread to receive the Stop signal and shut down the actor system
+        //because onSuccess for the other thread is to be executed on the FX thread
+        //so I dont want to destroy the FX thread before this happens
+        println("waiting for things to settle down...")
+        Thread.sleep(3000)
+        println("terminating")
+        stage.close()
+        System.exit(0)
+        ()
+      }
+      case _ => throw  new RuntimeException("Strange result from Watcher")
+    }(fxec)  ;
+    mainThread()
+  }
+  def waitForMessages = {
     val logger = Logger.getLogger("RECEIVER")
     PropertyConfigurator.configure("log4j.properties");
-    val customConf = ConfigFactory.parseString("akka { log-dead-letters-during-shutdown = off } ")
-    val system = ActorSystem("MathPump", customConf)
-    val beeper =  system.actorOf(Props[SoundPlayer], name="beeper")
-    val sndr = system.actorOf(Props(new Transmitter(beeper)), name = "transmitter")
-    val wtcr = system.actorOf(Props(new Watcher(sndr)), name = "watcher")
-
-    val delivery = PostOffice
-
     def mainThread(): Unit = Future {
-      var toUpdate: Either[(String,String),Signal] = Right(Continue)
+      var continuation: Either[(String,String),Signal] = Right(Continue)
       //thread will block here:
-      logger.info("Waitin on PostOffice delivery")
+      logger.info("Waiting on PostOffice delivery")
       val message = delivery.listen()
       message match {
         case p: ParcelTextFile => {
           logger.info("Got text file: " + p.filename + " from " + p.from)
           val path = Paths.get(them(p.from).dir, p.filename)
           Misc.writeToFilePath(path, p.cont)
-          toUpdate = Left((p.from, "file://" + Paths.get(them(p.from).dir, p.filename).toAbsolutePath().toString))
+          continuation = Left((p.from, "file://" + Paths.get(them(p.from).dir, p.filename).toAbsolutePath().toString))
           logger.info("Sending acknowledgment to " + p.from)
           delivery.broadcast(List(p.from), new ParcelReceipt("OK", myName, p.filename))
           beeper ! BeepOnPatch
@@ -79,7 +104,7 @@ class SVGViewer extends JFXApp {
           } else {
             Misc.writeToFilePath(Paths.get(them(p.from).dir, p.filename), newLines)
             logger.info("to load: " + "file://" + Paths.get(them(p.from).dir, p.filename).toAbsolutePath().toString)
-            toUpdate = Left((p.from, "file://" + Paths.get(them(p.from).dir, p.filename).toAbsolutePath().toString))
+            continuation = Left((p.from, "file://" + Paths.get(them(p.from).dir, p.filename).toAbsolutePath().toString))
             logger.info("BeepOnPatch :)")
             beeper ! BeepOnPatch
             logger.info("Sending acknowledgment to " + p.from)
@@ -100,7 +125,10 @@ class SVGViewer extends JFXApp {
           }
           beeper ! PoisonPill
           sndr ! PoisonPill
-          toUpdate = Right(Stop)
+          logger.info("shutting down the actor system")
+          Thread.sleep(1000)
+          system.shutdown()  ;
+          continuation = Right(Stop)
         }
         case Ignore => println("PASS")
         case e: ChannelWasClosed => {
@@ -111,30 +139,37 @@ class SVGViewer extends JFXApp {
           }
           beeper ! PoisonPill
           sndr ! PoisonPill
-          toUpdate = Right(Stop)
+          logger.info("shutting down the actor system")
+          Thread.sleep(1000)
+          continuation = Right(Stop)
+          System.exit(1)
         }
       }
-      toUpdate
+      continuation
     }(ExecutionContext.global).onSuccess {
       case Left((who, url)) => {
         webEngine(who).load(url);
         mainThread()
       }
-      case Right(Stop) => {()}
+      case Right(Stop) => ()
       case Right(Continue) => {
         mainThread()
       }
     }(fxec)
-    //let us now start it:
     mainThread()
   }
   val btn : Button = new Button("press to START mathpump") {
     onAction = (e: ActionEvent) => {
-      btn.text = "press to STOP mathpump"
       startMain
+      btn.text = "press to STOP mathpump"
+      btn.onAction = {
+        (e1: ActionEvent) => {
+          btn.text = "---" ;
+          stopMain
+        }
+      }
     }
   }
-
   stage = new PrimaryStage {
     title = "MATHACOC: " + myName
     scene = new Scene {
@@ -143,7 +178,6 @@ class SVGViewer extends JFXApp {
       )
     }
   }
-
   val svgStage : Map[String, Stage] = (
     for (nm <- them.keys) yield {
       browser(nm).setPrefHeight(them(nm).height - 20)
@@ -160,7 +194,5 @@ class SVGViewer extends JFXApp {
       })
     }
     ) toMap    ;
-
   for (nm <- them.keys) svgStage(nm).show()
-
 }

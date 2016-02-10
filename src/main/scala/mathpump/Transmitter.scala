@@ -144,9 +144,6 @@ class Transmitter(beeper: ActorRef) extends Actor {
     case WatcherRequestsShutdown => {
       logger.info("Sending Stop object to my own Rcvr")
       delivery.broadcast(List(myName), Stop)
-      Thread.sleep(3000) // this is ugly ; may lead to exception if connection is slow
-      delivery.connection.close()
-      context.parent ! SenderResigns
     }
     case _ => throw new RuntimeException("Msgr: Unknown message received by Actor Msgr")
   }

@@ -1,3 +1,5 @@
+import scala.util.Random
+
 import akka.actor.ActorSystem
 import com.typesafe.config.{Config, ConfigFactory}
 
@@ -6,7 +8,6 @@ import com.typesafe.config.{Config, ConfigFactory}
   * Created by andrei on 04/02/16.
   */
 package object mathpump {
-  var happy = true
   val config = ConfigFactory.load()
   val myName = config.getString("me.name")
   val myPassword = config.getString("me.password")
@@ -32,6 +33,8 @@ package object mathpump {
   val beepless: Boolean = config.getBoolean("silent")
   val headless: Boolean = config.getBoolean("headless")
 
+  val alphabet = ('a' to 'z') ++ ('A' to 'Z') ++ ('0' to '9')
+  val stopWatcherFileName = (1 to 15).map(_ => alphabet(Random.nextInt(alphabet.size))).mkString
 
   val system = ActorSystem("mathpump")
 
