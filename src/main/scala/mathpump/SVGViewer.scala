@@ -162,6 +162,7 @@ class SVGViewer extends JFXApp {
     onAction = (e: ActionEvent) => {
       startMain
       btn.text = "press to STOP mathpump"
+      for (nm <- them.keys) svgStage(nm).show()
       btn.onAction = {
         (e1: ActionEvent) => {
           btn.text = "---" ;
@@ -194,5 +195,4 @@ class SVGViewer extends JFXApp {
       })
     }
     ) toMap    ;
-  for (nm <- them.keys) svgStage(nm).show()
 }
