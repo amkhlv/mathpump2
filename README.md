@@ -60,7 +60,7 @@ This will create the file: `target/scala-2.11/mathpump2-assembly-1.0.jar`
 Configuration and running
 =========================
 
-See [example/README.md]
+See [example/README.md](example/README.md)
 
 You will need three things from Charlie:
 
