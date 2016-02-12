@@ -7,7 +7,7 @@ import akka.actor.{ActorSystem, PoisonPill, Props}
 import com.typesafe.config.ConfigFactory
 import org.apache.log4j.{Logger, PropertyConfigurator}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, blocking}
 import scala.language.postfixOps
 import scalafx.Includes._
 import scalafx.application.{Platform, JFXApp}
@@ -49,7 +49,7 @@ class SVGViewer extends JFXApp {
   }
   def stopMain = Paths.get(outDirName, stopWatcherFileName).toFile().createNewFile()
   def watcherProc = {
-    def mainThread(): Unit = Future{(new Watcher(sndr)).run}(ExecutionContext.global).onSuccess {
+    def mainThread(): Unit = Future{ blocking {(new Watcher(sndr)).run}}(ExecutionContext.global).onSuccess {
       case WatcherRequestsShutdown => { //exiting:
         //close all SVG windows:
         for (nm <- them.keys) svgStage(nm).close()  ;
@@ -71,8 +71,8 @@ class SVGViewer extends JFXApp {
   def waitForMessages = {
     val logger = Logger.getLogger("SVGViewer")
     PropertyConfigurator.configure("log4j.properties");
-    def mainThread(): Unit = Future {
-      var continuation: Either[(String,String),Signal] = Right(Continue)
+    def mainThread(): Unit = Future { blocking {
+      var continuation: Either[(String, String), Signal] = Right(Continue)
       //thread will block here:
       logger.info("Waiting on PostOffice delivery")
       val message = delivery.listen()
@@ -115,23 +115,25 @@ class SVGViewer extends JFXApp {
           logger.info("BeepOnReceipt :):):)")
           beeper ! BeepOnReceipt
           logger.info("Received receipt from " + p.from + " with status " + p.status + " of file " + p.filename)
-          sndr ! p  //notify the transmitter of the receipt of acknowledgment
+          sndr ! p //notify the transmitter of the receipt of acknowledgment
         }
         case Stop => {
           logger.info("I got the Stop signal from RabbitMQ; exiting")
-          if (! delivery.close()) { beeper ! BeepOnError }
+          if (!delivery.close()) {
+            beeper ! BeepOnError
+          }
           beeper ! PoisonPill
           sndr ! PoisonPill
           logger.info("shutting down the actor system")
           Thread.sleep(1000)
-          system.shutdown()  ;
+          system.shutdown();
           continuation = Right(Stop)
         }
         case Ignore => println("PASS")
         case e: ChannelWasClosed => {
           beeper ! BeepOnError
           logger.error("lost incoming channel; exiting")
-          if (! delivery.close()) {
+          if (!delivery.close()) {
             beeper ! BeepOnError
           }
           beeper ! PoisonPill
@@ -143,7 +145,7 @@ class SVGViewer extends JFXApp {
         }
       }
       continuation
-    }(ExecutionContext.global).onSuccess {
+    }}(ExecutionContext.global).onSuccess {
       case Left((who, url)) => {
         webEngine(who).load(url);
         logger.info("finished loading file; about to restart mainThread")

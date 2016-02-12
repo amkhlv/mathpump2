@@ -68,6 +68,7 @@ object PostOffice extends Broadcaster {
   val inChannel = connection.createChannel()
   inChannel.queueDeclare(myName, false, false, false, null)
   val consumer = new QueueingConsumer(inChannel);
+  inChannel.basicConsume(myName, true, consumer);
   val outChannel: Map[String, com.rabbitmq.client.Channel] = Map((
     for (nm <- myName :: (them.keys toList)) yield {
       logger.info("creating connection for " + nm)
@@ -238,7 +239,7 @@ object PostOffice extends Broadcaster {
   def listen(): Parcel = {
     logger.info("RabbitMQ is waiting for messages");
     try {
-      inChannel.basicConsume(myName, true, consumer);
+
       val dlvr = consumer.nextDelivery();
       msgToObj(dlvr.getBody)
     } catch {
