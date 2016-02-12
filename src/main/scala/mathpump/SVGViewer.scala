@@ -69,7 +69,7 @@ class SVGViewer extends JFXApp {
     mainThread()
   }
   def waitForMessages = {
-    val logger = Logger.getLogger("RECEIVER")
+    val logger = Logger.getLogger("SVGViewer")
     PropertyConfigurator.configure("log4j.properties");
     def mainThread(): Unit = Future {
       var continuation: Either[(String,String),Signal] = Right(Continue)
@@ -112,7 +112,7 @@ class SVGViewer extends JFXApp {
           }
         }
         case p: ParcelReceipt => {
-          logger.info("BeepOnReceipt :)")
+          logger.info("BeepOnReceipt :):):)")
           beeper ! BeepOnReceipt
           logger.info("Received receipt from " + p.from + " with status " + p.status + " of file " + p.filename)
           sndr ! p  //notify the transmitter of the receipt of acknowledgment
@@ -146,11 +146,15 @@ class SVGViewer extends JFXApp {
     }(ExecutionContext.global).onSuccess {
       case Left((who, url)) => {
         webEngine(who).load(url);
+        logger.info("finished loading file; about to restart mainThread")
         mainThread()
+        logger.info("restarted mainThread")
       }
       case Right(Stop) => ()
       case Right(Continue) => {
+        logger.info("about to restart mainThread")
         mainThread()
+        logger.info("restarted mainThread")
       }
     }(fxec)
     mainThread()

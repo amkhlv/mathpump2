@@ -38,7 +38,7 @@ class Watcher(sndr: ActorRef) {
             //this is just to double check
             signalFile.delete()
             happy = false
-            logger.info("Detected (and detected) the signal file; sending WatcherRequestsShutdown to Commander")
+            logger.info("Detected (and deleted) the signal file; sending WatcherRequestsShutdown to Commander")
             sndr ! WatcherRequestsShutdown
           }
         } else {

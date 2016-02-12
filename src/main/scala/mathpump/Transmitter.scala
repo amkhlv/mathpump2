@@ -12,7 +12,7 @@ import scala.annotation.tailrec
 import scala.language.postfixOps
 
 class Transmitter(beeper: ActorRef, delivery: Broadcaster) extends Actor {
-  val logger = Logger.getLogger("SENDER")
+  val logger = Logger.getLogger("TRANSMITTER")
   PropertyConfigurator.configure("log4j.properties");
 
 
