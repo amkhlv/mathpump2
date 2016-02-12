@@ -11,11 +11,11 @@ import java.nio.file._
 import scala.annotation.tailrec
 import scala.language.postfixOps
 
-class Transmitter(beeper: ActorRef) extends Actor {
+class Transmitter(beeper: ActorRef, delivery: Broadcaster) extends Actor {
   val logger = Logger.getLogger("SENDER")
   PropertyConfigurator.configure("log4j.properties");
 
-  val delivery = PostOffice
+
   var oldFileContents: Map[Path, String] = Map()
 
   def updateOldFileContents(fpath: Path, x: String) = {

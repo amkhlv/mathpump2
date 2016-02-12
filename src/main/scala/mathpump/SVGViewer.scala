@@ -31,8 +31,9 @@ class SVGViewer extends JFXApp {
   val system = ActorSystem("MathPump", customConf)
   val beeper =  system.actorOf(Props[SoundPlayer], name="beeper")
   println("Initializing transmitter...")
-  val sndr = system.actorOf(Props(new Transmitter(beeper)), name = "transmitter")
   val delivery = PostOffice
+  val sndr = system.actorOf(Props(new Transmitter(beeper, delivery)), name = "transmitter")
+
 
   def startMain = {
     val backgroundThreadForListeningToRabbit = new Thread {
@@ -103,26 +104,22 @@ class SVGViewer extends JFXApp {
             delivery.broadcast(List(p.from), new ParcelReceipt("PleaseResend", myName, p.filename))
           } else {
             Misc.writeToFilePath(Paths.get(them(p.from).dir, p.filename), newLines)
-            logger.info("to load: " + "file://" + Paths.get(them(p.from).dir, p.filename).toAbsolutePath().toString)
             continuation = Left((p.from, "file://" + Paths.get(them(p.from).dir, p.filename).toAbsolutePath().toString))
             logger.info("BeepOnPatch :)")
             beeper ! BeepOnPatch
             logger.info("Sending acknowledgment to " + p.from)
             delivery.broadcast(List(p.from), new ParcelReceipt("OK", myName, p.filename))
           }
-          //TODO: file_was_patched
         }
         case p: ParcelReceipt => {
           logger.info("BeepOnReceipt :)")
           beeper ! BeepOnReceipt
           logger.info("Received receipt from " + p.from + " with status " + p.status + " of file " + p.filename)
-          sndr ! p  //notify the sender of the receipt of acknowledgment
+          sndr ! p  //notify the transmitter of the receipt of acknowledgment
         }
         case Stop => {
           logger.info("I got the Stop signal from RabbitMQ; exiting")
-          if (! delivery.close()) {
-            beeper ! BeepOnError
-          }
+          if (! delivery.close()) { beeper ! BeepOnError }
           beeper ! PoisonPill
           sndr ! PoisonPill
           logger.info("shutting down the actor system")

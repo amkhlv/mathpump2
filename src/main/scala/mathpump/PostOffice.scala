@@ -14,7 +14,7 @@ import org.apache.log4j.{Logger, PropertyConfigurator}
 
 import scala.language.postfixOps
 
-object PostOffice {
+object PostOffice extends Broadcaster {
   val logger = Logger.getLogger("POSTOFFICE")
   PropertyConfigurator.configure("log4j.properties")
 
@@ -220,7 +220,7 @@ object PostOffice {
     }
   }
 
-  def broadcast(recipients: List[String], obj: Parcel) = {
+  def broadcast(recipients: List[String], obj: Parcel): Unit = {
     val diagnosticString = obj match {
       case y: ParcelTextFile => "type:ParcelTextFile from:" + y.from + " filename:" + y.filename
       case y: ParcelPatch => "type:ParcelPatch from:" + y.from + " filename:" + y.filename
@@ -231,15 +231,16 @@ object PostOffice {
     for (name <- recipients) {
       outChannel(name).basicPublish("", name, null, objToMsg(obj));
       logger.info(diagnosticString + " --> Sent to: " + name)
-    }
+    } ;
+    ()
   }
 
   def listen(): Parcel = {
     logger.info("RabbitMQ is waiting for messages");
     try {
       inChannel.basicConsume(myName, true, consumer);
-      val delivery = consumer.nextDelivery();
-      msgToObj(delivery.getBody)
+      val dlvr = consumer.nextDelivery();
+      msgToObj(dlvr.getBody)
     } catch {
       case ex: com.rabbitmq.client.AlreadyClosedException => new ChannelWasClosed
     }
