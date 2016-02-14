@@ -52,7 +52,12 @@ On my server, I created ``/var/rabbitmq`` and put both ``testca/`` and ``server/
 Email the server certificate to Alice and Bob
 --------------------------------------------
 
-The folder ``server/`` contains a file `cert.pem` which you should send to all users (by email).
+The folder ``server/`` contains a file `cert.pem`. Execute the following command:
+
+    keytool -import -alias server1 -file cert.pem -keystore trustStore
+
+You will be asked for a passphrase. Choose some passphrase and give it to Alice and Bob. You should
+also send them the newly created file `trustStore`.
 
 
 Enabling SSL Support in RabbitMQ

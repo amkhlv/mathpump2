@@ -3,6 +3,9 @@ import scala.util.Random
 import akka.actor.ActorSystem
 import com.typesafe.config.{Config, ConfigFactory}
 
+import scala.util.matching.Regex
+import scala.collection.JavaConversions._
+
 
 /**
   * Created by andrei on 04/02/16.
@@ -12,6 +15,7 @@ package object mathpump {
   val myName = config.getString("me.name")
   val myPassword = config.getString("me.password")
   val outDirName = config.getString("me.dir")
+  val ignoredFilenamePatterns : List[Regex] = config.getStringList("me.ignore").map(x => x.r).toList
   case class PersonConfig(dir: String, width: Int, height: Int)
   val them: Map[String, PersonConfig] = Map((for (c <- config.getConfigList("them").toArray()) yield {
     val (nm: String , dir: String, width: Int, height: Int) = c match {

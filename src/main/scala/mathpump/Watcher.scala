@@ -7,6 +7,8 @@ import org.apache.log4j.{Logger, PropertyConfigurator}
 
 import scala.collection.JavaConversions._
 import scala.language.postfixOps
+import scala.util.matching.Regex
+
 /**
   * Created by andrei on 06/02/16.
   */
@@ -41,7 +43,13 @@ class Watcher(sndr: ActorRef) {
             logger.info("Detected (and deleted) the signal file; sending WatcherRequestsShutdown to Commander")
             sndr ! WatcherRequestsShutdown
           }
-        } else {
+        } else if (
+          ignoredFilenamePatterns.toList.map {
+            case r: Regex => r.findFirstMatchIn(event.context().toString) match {
+              case Some(x) => false
+              case None => true
+            }}.fold(true)((a,b) => a && b)
+        ) {
           val evKind = event.kind()
           logger.info("Detected event in context: " + evCont + " of the kind: " + evKind)
           if ((evKind == StandardWatchEventKinds.ENTRY_CREATE) || (evKind == StandardWatchEventKinds.ENTRY_MODIFY)) {
