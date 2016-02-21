@@ -137,6 +137,10 @@ object PostOffice extends Broadcaster {
       val txt = "type:Stop"
       txt.getBytes
     }
+    case Ignore => {
+      val txt = "type:Ignore"
+      txt.getBytes
+    }
     case u => {
       println(u)
       logger.error("failure of objToMsg")
@@ -214,6 +218,7 @@ object PostOffice extends Broadcaster {
         new ParcelTextFile(lines.drop(3).mkString("\n"), from, filename)
       }
       case "Stop" => Stop
+      case "Ignore" => Ignore
       case x => {
         logger.error("****************** Unknown Transmission: " + x)
         Ignore

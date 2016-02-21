@@ -5,13 +5,18 @@ package mathpump
   */
 
 
-import akka.actor.{ActorRef, Actor}
-import org.apache.log4j.{Logger, PropertyConfigurator}
 import java.nio.file._
+
+import akka.actor.{Actor, ActorRef}
+import org.apache.log4j.{Logger, PropertyConfigurator}
+
 import scala.annotation.tailrec
 import scala.language.postfixOps
+import scalafx.application.Platform
+import scalafx.scene.control.Label
+import scalafx.scene.paint.Color
 
-class Transmitter(beeper: ActorRef, delivery: Broadcaster) extends Actor {
+class Transmitter(beeper: ActorRef, delivery: Broadcaster, statusLabel: Map[String, Label]) extends Actor {
   val logger = Logger.getLogger("TRANSMITTER")
   PropertyConfigurator.configure("log4j.properties");
 
@@ -47,7 +52,15 @@ class Transmitter(beeper: ActorRef, delivery: Broadcaster) extends Actor {
     filesWeNeedToSend = filesWeNeedToSend - fpath
     logger.info("Done sending contents of " + fname)
     updateOldFileContents(fpath, lines)
-  }
+    Platform.runLater{
+      new Runnable {
+        override def run(): Unit = {
+          for (k <- statusLabel.keys)  {
+            statusLabel(k).setTextFill(Color.web("#ee0000"));
+            statusLabel(k).setText("waiting for receipt for FILE " + fname);
+          };
+          ()
+        }}}}
 
   def sendPatch(fpath: Path) = {
     val fname = fpath.getFileName.toString
@@ -61,7 +74,15 @@ class Transmitter(beeper: ActorRef, delivery: Broadcaster) extends Actor {
     patchesWeNeedToSend = patchesWeNeedToSend - fpath
     logger.info("Done sending patch to file " + fname)
     updateOldFileContents(fpath, lines)
-  }
+    Platform.runLater{
+      new Runnable {
+        override def run(): Unit = {
+          for (k <- statusLabel.keys)  {
+            statusLabel(k).setTextFill(Color.web("#ee0000"));
+            statusLabel(k).setText("waiting for receipt for PATCH to " + fname);
+          };
+          ()
+        }}}}
 
   def sendAllFilesInOutDir() {
     val listOfFiles = (new java.io.File(outDirName)).listFiles
@@ -123,6 +144,14 @@ class Transmitter(beeper: ActorRef, delivery: Broadcaster) extends Actor {
     }
     case x: ParcelReceipt => {
       pendingReceipts = pendingReceipts.updated(x.from, pendingReceipts(x.from) - x.filename)
+      if (pendingReceipts(x.from).isEmpty) {
+        Platform.runLater{
+          new Runnable {
+            override def run(): Unit = {
+              Platform.runLater{statusLabel(x.from).setTextFill(Color.web("#009900"))}
+              Platform.runLater{statusLabel(x.from).setText("current")  } ;
+              ()
+            }}}}
       if (x.status == "PleaseResend") {
         logger.error("was notified of a PATCH ERROR; will resend the whole file")
         filesWeNeedToSend = filesWeNeedToSend + Paths.get(outDirName, x.filename)

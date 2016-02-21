@@ -10,11 +10,12 @@ import org.apache.log4j.{Logger, PropertyConfigurator}
 import scala.concurrent.{ExecutionContext, Future, blocking}
 import scala.language.postfixOps
 import scalafx.Includes._
-import scalafx.application.{Platform, JFXApp}
 import scalafx.application.JFXApp.PrimaryStage
+import scalafx.application.{JFXApp, Platform}
 import scalafx.event.ActionEvent
 import scalafx.scene.Scene
-import scalafx.scene.control.Button
+import scalafx.scene.control.{Button, Label}
+import scalafx.scene.layout.VBox
 import scalafx.scene.web.{WebEngine, WebView}
 import scalafx.stage.Stage
 
@@ -32,7 +33,8 @@ class SVGViewer extends JFXApp {
   val beeper =  system.actorOf(Props[SoundPlayer], name="beeper")
   println("Initializing transmitter...")
   val delivery = PostOffice
-  val sndr = system.actorOf(Props(new Transmitter(beeper, delivery)), name = "transmitter")
+  val statusLabel: Map[String, Label] = (for (nm <- them.keys) yield { (nm -> new Label("current")) }).toMap
+  val sndr = system.actorOf(Props(new Transmitter(beeper, delivery, statusLabel)), name = "transmitter")
 
 
   def startMain = {
@@ -186,14 +188,14 @@ class SVGViewer extends JFXApp {
     for (nm <- them.keys) yield {
       browser(nm).setPrefHeight(them(nm).height - 20)
       browser(nm).setPrefWidth(them(nm).width - 20)
+      val vbox = new VBox()
+      vbox.children.addAll(statusLabel(nm), browser(nm))
       (nm -> new Stage {
         title = nm + " pumped in:"
         width = them(nm).width
         height = them(nm).height
         scene = new Scene {
-          content = List(
-            browser(nm)
-          )
+          content = List( vbox )
         }
       })
     }
