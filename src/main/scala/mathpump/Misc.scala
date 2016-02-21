@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files._
 import java.nio.file.{Files, Path, Paths}
 import scala.collection.JavaConversions._
+import scala.util.matching.Regex
 
 object Misc {
   val separator = sys.props("line.separator")
@@ -33,5 +34,11 @@ object Misc {
     readAllLines(filePath, StandardCharsets.UTF_8).mkString(separator)
 
   def resourceFile(x: String): java.io.File = Paths.get(getClass.getResource(x).getPath).toFile
+
+  def notIgnored(x: String): Boolean = ignoredFilenamePatterns.toList.map {
+            case r: Regex => r.findFirstMatchIn(x) match {
+              case Some(y) => false
+              case None => true
+            }}.fold(true)((a,b) => a && b)
 
 }

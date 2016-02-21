@@ -88,7 +88,7 @@ class Transmitter(beeper: ActorRef, delivery: Broadcaster, statusLabel: Map[Stri
     val listOfFiles = (new java.io.File(outDirName)).listFiles
     logger.info("sendAllFilesInOutDir: " + listOfFiles.toString)
     for (f <- listOfFiles.filter(_ isFile)) {
-      sendFile(f.toPath)
+      if (Misc.notIgnored(f.getName)) sendFile(f.toPath)
     }
   }
 
