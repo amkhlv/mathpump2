@@ -57,7 +57,7 @@ class Transmitter(beeper: ActorRef, delivery: Broadcaster, statusLabel: Map[Stri
         override def run(): Unit = {
           for (k <- statusLabel.keys)  {
             statusLabel(k).setTextFill(Color.web("#ee0000"));
-            statusLabel(k).setText("waiting for receipt for FILE " + fname);
+            statusLabel(k).setText("waiting for receipt for FILE");
           };
           ()
         }}}}
@@ -79,7 +79,7 @@ class Transmitter(beeper: ActorRef, delivery: Broadcaster, statusLabel: Map[Stri
         override def run(): Unit = {
           for (k <- statusLabel.keys)  {
             statusLabel(k).setTextFill(Color.web("#ee0000"));
-            statusLabel(k).setText("waiting for receipt for PATCH to " + fname);
+            statusLabel(k).setText("waiting for receipt for PATCH");
           };
           ()
         }}}}
@@ -94,7 +94,9 @@ class Transmitter(beeper: ActorRef, delivery: Broadcaster, statusLabel: Map[Stri
 
   def sendAllWeNeedToSend() {
     logger.info("sendAllWeNeedToSend, files:   " + filesWeNeedToSend.toString)
+    if (! filesWeNeedToSend.isEmpty) println("sending FILES: " + filesWeNeedToSend.toString())
     logger.info("sendAllWeNeedToSend, patches: " + patchesWeNeedToSend.toString)
+    if (! patchesWeNeedToSend.isEmpty) println("sending PATCHES: " + patchesWeNeedToSend.toString())
     for (path <- filesWeNeedToSend) sendFile(path)
     for (path <- patchesWeNeedToSend) sendPatch(path)
   }
@@ -134,6 +136,7 @@ class Transmitter(beeper: ActorRef, delivery: Broadcaster, statusLabel: Map[Stri
       if (!(allEmpty(pendingReceipts)) && (!(patchesWeNeedToSend.isEmpty) || !(filesWeNeedToSend.isEmpty))) {
         logger.info("Not sending anything, because still waiting for receipt from the following recipients: " +
           pendingReceipts.toString())
+        println(Console.RED + pendingReceipts.toString() + Console.RESET)
         if (kind == StandardWatchEventKinds.ENTRY_CREATE) {
           logger.info("But remembering that, once the receipt is received, need to send the whole file " + path)
         } else if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
@@ -145,6 +148,7 @@ class Transmitter(beeper: ActorRef, delivery: Broadcaster, statusLabel: Map[Stri
     case x: ParcelReceipt => {
       pendingReceipts = pendingReceipts.updated(x.from, pendingReceipts(x.from) - x.filename)
       if (pendingReceipts(x.from).isEmpty) {
+        println(Console.GREEN + "OK" + Console.RESET)
         Platform.runLater{
           new Runnable {
             override def run(): Unit = {
