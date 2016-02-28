@@ -2,24 +2,25 @@
 Installing RabbitMQ
 ===================
 
-On Debian:
+Please [install a recent version of RabbitMQ](https://www.rabbitmq.com/install-debian.html)
 
-    aptitude install rabbitmq-server
+On Debian, `RabbitMQ` is started immediately after install. To stop it, type:
 
-It will install and start immediately. To stop it, type:
-
-    /etc/init.d/rabbitmq-server stop
+    systemctl stop rabbitmq-server
 
 First of all, let us change the default user's password. The default user is called `guest`.
 To change the password, first have to start the server:
 
-    /etc/init.d/rabbitmq-server start
+    systemctl start rabbitmq-server
 
 and then say:
 
     rabbitmqctl change_password guest VGIWB0CEWwDW
 
-where `VGIWB0CEWwDW` is the new password. 
+where `VGIWB0CEWwDW` is the new password. Let us also remove the administrative tags from `guest`:
+
+    rabbitmqctl set_user_tags guest    
+
 
 Configuring RabbitMQ
 ====================
@@ -27,27 +28,20 @@ Configuring RabbitMQ
 Keys and Certificates
 ---------------------
 
-There is a very good guide on the [RabbitMQ website](http://www.rabbitmq.com/ssl.html), just follow the 
+There is a very good guide on the [RabbitMQ website](https://www.rabbitmq.com/ssl.html), just follow the 
 instructions in the section called "Keys, Certificates and CA Certificates". You do not need the
 client part, **only the server part**. 
 
-The only thing I have to add to those instructions, is the following.  The RabbitMQ server runs under the user `rabbitmq`
-(which was  automatically created by the ``aptitude`` when you installed RabbitMQ).
-All these files which you created
-in ``testca/`` and ``server/`` should be **readable** by the ``rabbitmq`` user:
+On my server, I created ``/var/rabbitmq`` and put both ``testca/`` and ``server/`` as its subdirectories, so I have
+`/var/rabbitmq/testca/` and `/var/rabbitmq/server/`.
 
-    chown -R root:rabbitmq testca server
+Notice that the file `/var/rabbitmq/server/cert.pem` is the __public__ certificate. (We will later import it into the
+`trustStore` and send out to clients.) At the same time, `/var/rabbitmq/server/key.pem` is the __private__ key. As
+it is needed at runtime, put its permissions to `640` and ownership to `root:rabbitmq`.
 
-and set the 750 permission:
+A nice general introduction to the `OpenSSL` Certificate Authority 
+is [here](https://jamielinux.com/docs/openssl-certificate-authority/).
 
-    drwxr-x--- 2 root rabbitmq 4.0K Aug 20 15:11 client
-    drwxr-x--- 2 root rabbitmq 4.0K Aug 20 15:02 server
-    drwxr-x--- 4 root rabbitmq 4.0K Aug 20 15:11 testca
-
-On my server, I created ``/var/rabbitmq`` and put both ``testca/`` and ``server/`` as its subdirectories, so I have:
-
-    /var/rabbitmq/testca/
-    /var/rabbitmq/server/
 
 Email the server certificate to Alice and Bob
 --------------------------------------------
@@ -59,29 +53,26 @@ The folder ``server/`` contains a file `cert.pem`. Execute the following command
 You will be asked for a passphrase. Choose some passphrase and give it to Alice and Bob. You should
 also send them the newly created file `trustStore`.
 
-
 Enabling SSL Support in RabbitMQ
 --------------------------------
 
-This, again, is explained on the [RabbitMQ website](http://www.rabbitmq.com/ssl.html), in the section
-called "Enabling SSL Support in RabbitMQ". Basically, all you have to do is (as root):
+This, again, is explained on the [RabbitMQ website](https://www.rabbitmq.com/ssl.html), in the section
+called "Enabling SSL Support in RabbitMQ". Basically, the file `/etc/rabbitmq/rabbitmq.config` should contain:
 
-```
-echo '[
-  {rabbit, [
-     {ssl_listeners, [5671]},
-     {ssl_options, [{cacertfile,"/path/to/testca/cacert.pem"},
-                    {certfile,"/path/to/server/cert.pem"},
-                    {keyfile,"/path/to/server/key.pem"},
-                    {verify,verify_peer},
-                    {fail_if_no_peer_cert,false}]}
-   ]}
-].' >>    /etc/rabbitmq/rabbitmq.config
+    [ 
+      {ssl, [{versions, ['tlsv1.2']}]},
+      {rabbit, [
+         {ssl_listeners, [5671]},
+         {ssl_options, [{cacertfile,"/var/rabbitmq/testca/cacert.pem"},
+                        {certfile,"/var/rabbitmq/server/cert.pem"},
+                        {keyfile,"/var/rabbitmq/server/key.pem"},
+                        {versions, ['tlsv1.2']},
+                        {verify,verify_peer},  
+                        {fail_if_no_peer_cert,false}]}
+       ]}
+    ].
 
-```
 
-**and then replace** ``/path/to/testca`` and ``/path/to/server`` with the path to those two directories which you
-created in the previous subsection, when setting up keys.
 
 Opening the port
 ----------------
@@ -128,19 +119,13 @@ Moreover, I want to run the Web Console under SSL. For that, I have to edit the 
 to contain the following lines:
 
     [
-      {rabbit, [
-         {ssl_listeners, [5671]},
-         {ssl_options, [{cacertfile,"/var/rabbitmq/testca/cacert.pem"},
-                        {certfile,"/var/rabbitmq/server/cert.pem"},
-                        {keyfile,"/var/rabbitmq/server/key.pem"},
-                        {verify,verify_peer},
-                        {fail_if_no_peer_cert,false}]}
-       ]},
+      {ssl, (SEE ABOVE)},
+      {rabbit, (SEE ABOVE)},
       {rabbitmq_management, 
             [ 
                     {http_log_dir, "/tmp/rabbit-mgmt"},
                     {listener, [
-                            {port, 15672}, 
+                            {port, 15671}, 
                             {ssl, true},
                             {ssl_opts, [{cacertfile,"/var/rabbitmq/testca/cacert.pem"},
                                         {certfile,"/var/rabbitmq/server/cert.pem"},

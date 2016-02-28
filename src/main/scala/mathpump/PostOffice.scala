@@ -41,7 +41,7 @@ object PostOffice extends Broadcaster {
       val tmf = TrustManagerFactory.getInstance("SunX509");
       tmf.init(tks);
 
-      val c = SSLContext.getInstance("SSLv3");
+      val c = SSLContext.getInstance("TLSv1.2");
       c.init(null, tmf.getTrustManagers(), null);
 
       factory.useSslProtocol(c)
