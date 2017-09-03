@@ -34,23 +34,32 @@ It is useful to [map one of Wacom buttons](docs/Wacom_buttons.md) to `Save File`
 Client setup
 ============
 
-Building
---------
-
 This manual is for Linux. The installation on Windows should be completely analogous.
 
-You should have JDK of Java 8 and [JavaFX](https://en.wikipedia.org/wiki/JavaFX) installed on your computer.
-If you install from Oracle, then JavaFX is already bundled.
+Prerequisites
+-------------
 
-With `OpenJDK` they are separate. For example, on Debian:
+1. Install JDK of Java 8 and [JavaFX](https://en.wikipedia.org/wiki/JavaFX).
+   If you install from Oracle, then JavaFX is already bundled.
+   With `OpenJDK` they are separate. For example, on Debian:
 
     aptitude install openjdk-8-jdk openjfx
+
+2. Install [sbt](http://www.scala-sbt.org/)
+
+3. Install [git](https://git-scm.com/)
+
+4. Install [Inkscape](https://inkscape.org/)
+
+
+Building
+--------
 
 Then execute the following commands:
 
     git clone https://github.com/amkhlv/mathpump2
     cd mathpump2
-    ./activator assembly
+    sbt assembly
 
 This actually takes some time, depending on your Internet connection. Maybe 20 min or so. 
 
@@ -59,6 +68,8 @@ This will create the file: `target/scala-2.11/mathpump2-assembly-1.0.jar`
 
 Configuration and running
 =========================
+
+    cd example/
 
 See [example/README.md](example/README.md)
 
@@ -76,3 +87,7 @@ If you try to copy-paste a large bitmap image into your Inkscape window, this ma
 
 Also, the loss of Internet connection will lead to crash.
 In this case, the restart of the client program is needed (for both Alice and Bob).
+
+When restarting, make sure that old instances of `mathpump2` were stopped. 
+After stopping `mathpump` run `ps` in terminal
+and see if there are any instances of `java` still remaining. Kill them.

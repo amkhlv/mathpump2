@@ -15,7 +15,7 @@ import scalafx.application.{JFXApp, Platform}
 import scalafx.event.ActionEvent
 import scalafx.scene.Scene
 import scalafx.scene.control.{Button, Label}
-import scalafx.scene.layout.VBox
+import scalafx.scene.layout.{GridPane, VBox}
 import scalafx.scene.web.{WebEngine, WebView}
 import scalafx.stage.Stage
 
@@ -128,7 +128,7 @@ class SVGViewer extends JFXApp {
           sndr ! PoisonPill
           logger.info("shutting down the actor system")
           Thread.sleep(1000)
-          system.shutdown();
+          system.terminate();
           continuation = Right(Stop)
         }
         case Ignore => println("PASS")
@@ -148,7 +148,7 @@ class SVGViewer extends JFXApp {
       }
       continuation
     }}(ExecutionContext.global).onSuccess {
-      case Left((who, url)) => {
+      case Left((who:String, url)) => {
         webEngine(who).load(url);
         logger.info("finished loading file; about to restart mainThread")
         mainThread()
@@ -163,25 +163,20 @@ class SVGViewer extends JFXApp {
     }(fxec)
     mainThread()
   }
-  val btn : Button = new Button("press to START mathpump") {
+  val startBtn : Button = new Button("START mathpump") {
     onAction = (e: ActionEvent) => {
+      startBtn.text = "---"
       startMain
-      btn.text = "press to STOP mathpump"
       for (nm <- them.keys) svgStage(nm).show()
-      btn.onAction = {
-        (e1: ActionEvent) => {
-          btn.text = "---" ;
-          stopMain
-        }
-      }
     }
+  }
+  val stopBtn : Button = new Button("STOP mathpump") {
+    onAction = (e: ActionEvent) => stopMain
   }
   stage = new PrimaryStage {
     title = "MATHACOC: " + myName
     scene = new Scene {
-      content = List(
-        btn
-      )
+      content = new GridPane() { add(startBtn, 0, 0); add(stopBtn, 1, 0) }
     }
   }
   val svgStage : Map[String, Stage] = (

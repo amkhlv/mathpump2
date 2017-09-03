@@ -2,6 +2,8 @@
 Completing the configuration
 ============================
 
+You are now in the `example/` folder
+
 Missing files
 -------------
 

@@ -38,7 +38,7 @@ package object mathpump {
   val headless: Boolean = config.getBoolean("headless")
 
   val alphabet = ('a' to 'z') ++ ('A' to 'Z') ++ ('0' to '9')
-  val stopWatcherFileName = (1 to 15).map(_ => alphabet(Random.nextInt(alphabet.size))).mkString
+  val stopWatcherFileName = (1 to 8).map(_ => alphabet(Random.nextInt(alphabet.size))).mkString ++ ".eraseme"
 
   val system = ActorSystem("mathpump")
 
